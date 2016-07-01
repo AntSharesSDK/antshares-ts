@@ -4,9 +4,7 @@
     const DM = (1 << DB) - 1;
     const DV = DM + 1;
 
-    let _minusone: BigInteger;
-    let _one: BigInteger;
-    let _zero: BigInteger;
+    let _minusone: BigInteger, _one: BigInteger, _zero: BigInteger;
 
     export class BigInteger
     {
@@ -17,13 +15,13 @@
         public static get One() { return _one || (_one = new BigInteger(1)); }
         public static get Zero() { return _zero || (_zero = new BigInteger(0)); }
 
-        constructor(value: number | string | Uint8Array)
+        constructor(value: number | string | ArrayBuffer | Uint8Array)
         {
             if (typeof value === "number")
             {
                 if (!isFinite(value) || isNaN(value)) throw new RangeError();
                 let parts = BigInteger.getDoubleParts(value);
-                if (parts.man.equals(0) || parts.exp <= -64) return;
+                if (parts.man.equals(Uint64.Zero) || parts.exp <= -64) return;
                 if (parts.exp <= 0)
                 {
                     this.fromUint64(parts.man.rightShift(-parts.exp), parts.sign);
@@ -53,6 +51,10 @@
             else if (typeof value === "string")
             {
                 this.fromString(value);
+            }
+            else if (value instanceof ArrayBuffer)
+            {
+                this.fromUint8Array(new Uint8Array(value));
             }
             else if (value instanceof Uint8Array)
             {
@@ -313,7 +315,7 @@
             this.clamp();
         }
 
-        private fromUint64(i: UintVariable, sign: number): void
+        private fromUint64(i: Uint64, sign: number): void
         {
             while (i.bits[0] != 0 || i.bits[1] != 0)
             {
@@ -342,13 +344,13 @@
             new Float64Array(uu.buffer)[0] = dbl;
             let result = {
                 sign: 1 - ((uu[1] >>> 30) & 2),
-                man: new UintVariable([uu[0], uu[1] & 0x000FFFFF]),
+                man: new Uint64(uu[0], uu[1] & 0x000FFFFF),
                 exp: (uu[1] >>> 20) & 0x7FF,
                 fFinite: true
             };
             if (result.exp == 0)
             {
-                if (!result.man.equals(0))
+                if (!result.man.equals(Uint64.Zero))
                     result.exp = -1074;
             }
             else if (result.exp == 0x7FF)
@@ -357,7 +359,7 @@
             }
             else
             {
-                result.man = result.man.or(new UintVariable([0, 0x00100000]));
+                result.man = result.man.or(new Uint64(0, 0x00100000));
                 result.exp -= 1075;
             }
             return result;
@@ -520,6 +522,11 @@
         public negate(): BigInteger
         {
             return BigInteger.create(-this._sign, this._bits);
+        }
+
+        public static parse(str: string): BigInteger
+        {
+            return BigInteger.fromString(str);
         }
 
         public static pow(value: number | BigInteger, exponent: number): BigInteger

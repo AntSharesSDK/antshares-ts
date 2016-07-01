@@ -1,8 +1,8 @@
 ﻿namespace AntShares
 {
-    export class UintVariable
+    export abstract class UintVariable
     {
-        private _bits: Uint32Array;
+        protected _bits: Uint32Array;
 
         public get bits()
         {
@@ -40,114 +40,29 @@
             }
         }
 
-        public and(other: number | UintVariable): UintVariable
+        public compareTo(other: UintVariable): number
         {
-            if (typeof other === "number")
-            {
-                return this.and(new UintVariable([other]));
-            }
-            else
-            {
-                let bits = new Uint32Array(Math.max(this._bits.length, other._bits.length));
-                for (let i = 0; i < bits.length; i++)
-                    bits[i] = this._bits[i] & other._bits[i];
-                return new UintVariable(bits);
-            }
+            let max = Math.max(this._bits.length, other._bits.length);
+            for (let i = max - 1; i >= 0; i--)
+                if ((this._bits[i] || 0) > (other._bits[i] || 0))
+                    return 1;
+                else if ((this._bits[i] || 0) < (other._bits[i] || 0))
+                    return -1;
+            return 0;
         }
 
-        public compareTo(other: number | UintVariable): number
+        public equals(other: UintVariable): boolean
         {
-            if (typeof other === "number")
-            {
-                return this.compareTo(new UintVariable([other]));
-            }
-            else
-            {
-                let max = Math.max(this._bits.length, other._bits.length);
-                for (let i = max - 1; i >= 0; i--)
-                    if ((this._bits[i] || 0) > (other._bits[i] || 0))
-                        return 1;
-                    else if ((this._bits[i] || 0) < (other._bits[i] || 0))
-                        return -1;
-                return 0;
-            }
-        }
-
-        public equals(other: number | UintVariable): boolean
-        {
-            if (typeof other === "number")
-            {
-                return this.equals(new UintVariable([other]));
-            }
-            else
-            {
-                let max = Math.max(this._bits.length, other._bits.length);
-                for (let i = 0; i < max; i++)
-                    if ((this._bits[i] || 0) != (other._bits[i] || 0))
-                        return false;
-                return true;
-            }
-        }
-
-        public leftShift(shift: number): UintVariable
-        {
-            if (shift == 0) return this;
-            let shift_units = shift >>> 5;
-            shift = shift & 0x1f;
-            let bits = new Uint32Array(this._bits.length);
-            for (let i = shift_units; i < bits.length; i++)
-                if (shift == 0)
-                    bits[i] = this._bits[i - shift_units];
-                else
-                    bits[i] = this._bits[i - shift_units] << shift | this._bits[i - shift_units - 1] >>> (32 - shift);
-            return new UintVariable(bits);
-        }
-
-        public not(): UintVariable
-        {
-            let bits = new Uint32Array(this._bits.length);
-            for (let i = 0; i < bits.length; i++)
-                bits[i] = ~this._bits[i];
-            return new UintVariable(bits);
-        }
-
-        public or(other: number | UintVariable): UintVariable
-        {
-            if (typeof other === "number")
-            {
-                return this.or(new UintVariable([other]));
-            }
-            else
-            {
-                let bits = new Uint32Array(Math.max(this._bits.length, other._bits.length));
-                for (let i = 0; i < bits.length; i++)
-                    bits[i] = this._bits[i] | other._bits[i];
-                return new UintVariable(bits);
-            }
-        }
-
-        public rightShift(shift: number): UintVariable
-        {
-            if (shift == 0) return this;
-            let shift_units = shift >>> 5;
-            shift = shift & 0x1f;
-            let bits = new Uint32Array(this._bits.length);
-            for (let i = 0; i < bits.length - shift_units; i++)
-                if (shift == 0)
-                    bits[i] = this._bits[i + shift_units];
-                else
-                    bits[i] = this._bits[i + shift_units] >>> shift | this._bits[i + shift_units + 1] << (32 - shift);
-            return new UintVariable(bits);
+            let max = Math.max(this._bits.length, other._bits.length);
+            for (let i = 0; i < max; i++)
+                if ((this._bits[i] || 0) != (other._bits[i] || 0))
+                    return false;
+            return true;
         }
 
         public serialize(): Uint8Array
         {
             return new Uint8Array(this.bits.buffer, this.bits.byteOffset, this.bits.byteLength);
-        }
-
-        public toInt32(): number
-        {
-            return this._bits[0] | 0;
         }
 
         public toString(): string
@@ -156,26 +71,6 @@
             for (let i = this._bits.length * 32 - 4; i >= 0; i -= 4)
                 s += ((this._bits[i >>> 5] >>> (i % 32)) & 0xf).toString(16);
             return s;
-        }
-
-        public toUint32(): number
-        {
-            return this._bits[0];
-        }
-
-        public xor(other: number | UintVariable): UintVariable
-        {
-            if (typeof other === "number")
-            {
-                return this.xor(new UintVariable([other]));
-            }
-            else
-            {
-                let bits = new Uint32Array(Math.max(this._bits.length, other._bits.length));
-                for (let i = 0; i < bits.length; i++)
-                    bits[i] = this._bits[i] ^ other._bits[i];
-                return new UintVariable(bits);
-            }
         }
     }
 }
