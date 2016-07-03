@@ -98,5 +98,50 @@
             this.array_uint32[0] = value;
             this.output.write(this._buffer, 0, 4);
         }
+
+        public writeUInt64(value: Uint64): void
+        {
+            this.output.write(value.bits.buffer, 0, 8);
+        }
+
+        public writeVarBytes(value: ArrayBuffer): void
+        {
+            this.writeVarInt(value.byteLength);
+            this.output.write(value, 0, value.byteLength);
+        }
+
+        public writeVarInt(value: number): void
+        {
+            if (value < 0) throw new RangeError();
+            if (value < 0xfd)
+            {
+                this.writeByte(value);
+            }
+            else if (value <= 0xffff)
+            {
+                this.writeByte(0xfd);
+                this.writeUInt16(value);
+            }
+            else if (value <= 0xFFFFFFFF)
+            {
+                this.writeByte(0xfe);
+                this.writeUInt32(value);
+            }
+            else
+            {
+                this.writeByte(0xff);
+                this.writeUInt32(value);
+                this.writeUInt32(value / Math.pow(2, 32));
+            }
+        }
+
+        public writeVarString(value: string): void
+        {
+            value = unescape(encodeURIComponent(value));
+            let codes = new Uint8Array(value.length);
+            for (let i = 0; i < codes.length; i++)
+                codes[i] = value.charCodeAt(i);
+            this.writeVarBytes(codes.buffer);
+        }
     }
 }

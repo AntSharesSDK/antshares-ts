@@ -92,6 +92,11 @@ namespace AntShares
             return this._bits[0] | 0;
         }
 
+        public toNumber(): number
+        {
+            return this._bits[0] + this._bits[1] * Math.pow(2, 32);
+        }
+
         public toString(): string
         {
             return (new BigInteger(this._bits.buffer)).toString();

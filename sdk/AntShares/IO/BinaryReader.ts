@@ -109,8 +109,42 @@
         {
             this.fillBuffer(this._buffer, 4);
             if (this.array_uint32 == null)
-                this.array_uint32 = new Uint32Array(this._buffer, 0, 1);
+                this.array_uint32 = new Uint32Array(this._buffer, 0, 2);
             return this.array_uint32[0];
+        }
+
+        public readUInt64(): Uint64
+        {
+            this.fillBuffer(this._buffer, 8);
+            if (this.array_uint32 == null)
+                this.array_uint32 = new Uint32Array(this._buffer, 0, 2);
+            return new Uint64(this.array_uint32[0], this.array_uint32[1]);
+        }
+
+        public readVarBytes(max = 0X7fffffc7): ArrayBuffer
+        {
+            return this.readBytes(this.readVarInt(max));
+        }
+
+        public readVarInt(max = 9007199254740991): number
+        {
+            let fb = this.readByte();
+            let value: number;
+            if (fb == 0xfd)
+                value = this.readUInt16();
+            else if (fb == 0xfe)
+                value = this.readUInt32();
+            else if (fb == 0xff)
+                value = this.readUInt64().toNumber();
+            else
+                value = fb;
+            if (value > max) throw new RangeError();
+            return value;
+        }
+
+        public readVarString(): string
+        {
+            return decodeURIComponent(escape(String.fromCharCode.apply(null, new Uint8Array(this.readVarBytes()))));
         }
     }
 }
