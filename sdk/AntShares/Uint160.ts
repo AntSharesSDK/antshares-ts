@@ -1,3 +1,5 @@
+/// <reference path="UintVariable.ts"/>
+
 namespace AntShares
 {
     let _zero: Uint160;

@@ -1,11 +1,11 @@
 {
-    "compilerOptions": { 
+    "compilerOptions": {
         "noImplicitAny": false,
         "noEmitOnError": true,
-        "removeComments": false,
+        "removeComments": true,
         "sourceMap": true,
         "inlineSources": true,
-        "out": "outputs/AntSharesSDK.js",
+        "outFile": "outputs/AntSharesSDK.js",
         "target": "es5"
     }
 }
