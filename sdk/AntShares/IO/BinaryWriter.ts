@@ -51,6 +51,11 @@
             this.output.write(this._buffer, 0, 8);
         }
 
+        public writeFixed8(value: Fixed8): void
+        {
+            this.writeUintVariable(value.getData());
+        }
+
         public writeInt16(value: number): void
         {
             if (this.array_int16 == null)
@@ -75,6 +80,13 @@
             this.output.write(this._buffer, 0, 1);
         }
 
+        public writeSerializableArray(array: ISerializable[]): void
+        {
+            this.writeVarInt(array.length);
+            for (let i = 0; i < array.length; i++)
+                array[i].serialize(this);
+        }
+
         public writeSingle(value: number): void
         {
             if (this.array_float32 == null)
@@ -83,7 +95,7 @@
             this.output.write(this._buffer, 0, 4);
         }
 
-        public writeUInt16(value: number): void
+        public writeUint16(value: number): void
         {
             if (this.array_uint16 == null)
                 this.array_uint16 = new Uint16Array(this._buffer, 0, 1);
@@ -91,7 +103,7 @@
             this.output.write(this._buffer, 0, 2);
         }
 
-        public writeUInt32(value: number): void
+        public writeUint32(value: number): void
         {
             if (this.array_uint32 == null)
                 this.array_uint32 = new Uint32Array(this._buffer, 0, 1);
@@ -99,9 +111,9 @@
             this.output.write(this._buffer, 0, 4);
         }
 
-        public writeUInt64(value: Uint64): void
+        public writeUintVariable(value: UintVariable): void
         {
-            this.output.write(value.bits.buffer, 0, 8);
+            this.write(value.bits.buffer);
         }
 
         public writeVarBytes(value: ArrayBuffer): void
@@ -120,18 +132,18 @@
             else if (value <= 0xffff)
             {
                 this.writeByte(0xfd);
-                this.writeUInt16(value);
+                this.writeUint16(value);
             }
             else if (value <= 0xFFFFFFFF)
             {
                 this.writeByte(0xfe);
-                this.writeUInt32(value);
+                this.writeUint32(value);
             }
             else
             {
                 this.writeByte(0xff);
-                this.writeUInt32(value);
-                this.writeUInt32(value / Math.pow(2, 32));
+                this.writeUint32(value);
+                this.writeUint32(value / Math.pow(2, 32));
             }
         }
 

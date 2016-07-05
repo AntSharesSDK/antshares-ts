@@ -2,7 +2,7 @@
 {
     export interface ISerializable
     {
-        serialize(writer: BinaryWriter): void;
         deserialize(reader: BinaryReader): void;
+        serialize(writer: BinaryWriter): void;
     }
 }

@@ -65,6 +65,11 @@
             return this.array_float64[0];
         }
 
+        public readFixed8(): Fixed8
+        {
+            return new Fixed8(this.readUint64());
+        }
+
         public readInt16(): number
         {
             this.fillBuffer(this._buffer, 2);
@@ -89,6 +94,21 @@
             return this.array_int8[0];
         }
 
+        public readSerializable(T: Function): ISerializable
+        {
+            let obj = <ISerializable>new (<any>T());
+            obj.deserialize(this);
+            return obj;
+        }
+
+        public readSerializableArray(T: Function): ISerializable[]
+        {
+            let array = new Array<ISerializable>(this.readVarInt(0x10000000));
+            for (let i = 0; i < array.length; i++)
+                array[i] = this.readSerializable(T);
+            return array;
+        }
+
         public readSingle(): number
         {
             this.fillBuffer(this._buffer, 4);
@@ -97,7 +117,7 @@
             return this.array_float32[0];
         }
 
-        public readUInt16(): number
+        public readUint16(): number
         {
             this.fillBuffer(this._buffer, 2);
             if (this.array_uint16 == null)
@@ -105,7 +125,17 @@
             return this.array_uint16[0];
         }
 
-        public readUInt32(): number
+        public readUint160(): Uint160
+        {
+            return new Uint160(this.readBytes(20));
+        }
+
+        public readUint256(): Uint256
+        {
+            return new Uint256(this.readBytes(32));
+        }
+
+        public readUint32(): number
         {
             this.fillBuffer(this._buffer, 4);
             if (this.array_uint32 == null)
@@ -113,7 +143,7 @@
             return this.array_uint32[0];
         }
 
-        public readUInt64(): Uint64
+        public readUint64(): Uint64
         {
             this.fillBuffer(this._buffer, 8);
             if (this.array_uint32 == null)
@@ -131,11 +161,11 @@
             let fb = this.readByte();
             let value: number;
             if (fb == 0xfd)
-                value = this.readUInt16();
+                value = this.readUint16();
             else if (fb == 0xfe)
-                value = this.readUInt32();
+                value = this.readUint32();
             else if (fb == 0xff)
-                value = this.readUInt64().toNumber();
+                value = this.readUint64().toNumber();
             else
                 value = fb;
             if (value > max) throw new RangeError();

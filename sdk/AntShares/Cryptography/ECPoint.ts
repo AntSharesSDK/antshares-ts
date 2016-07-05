@@ -89,6 +89,29 @@
             return new ECPoint(x, beta, curve);
         }
 
+        public static deserializeFrom(reader: IO.BinaryReader, curve: ECCurve): ECPoint
+        {
+            let expectedLength = (curve.Q.bitLength() + 7) / 8;
+            let array = new Uint8Array(1 + expectedLength * 2);
+            array[0] = reader.readByte();
+            switch (array[0])
+            {
+                case 0x00:
+                    return curve.Infinity;
+                case 0x02:
+                case 0x03:
+                    reader.read(array.buffer, 1, expectedLength);
+                    return ECPoint.decodePoint(new Uint8Array(array.buffer, 0, 33), curve);
+                case 0x04:
+                case 0x06:
+                case 0x07:
+                    reader.read(array.buffer, 1, expectedLength * 2);
+                    return ECPoint.decodePoint(array, curve);
+                default:
+                    throw new Error("Invalid point encoding " + array[0]);
+            }
+        }
+
         public encodePoint(commpressed: boolean): Uint8Array
         {
             if (this.isInfinity()) return new Uint8Array(1);
@@ -252,6 +275,11 @@
             return new ECPoint(this.x, this.y.negate(), this.curve);
         }
 
+        public static parse(str: string, curve: ECCurve): ECPoint
+        {
+            return ECPoint.decodePoint(str.hexToBytes(), curve);
+        }
+
         public serialize(): Uint8Array
         {
             return this.encodePoint(true);
@@ -261,6 +289,11 @@
         {
             if (y.isInfinity()) return x;
             return ECPoint.add(x, y.negate());
+        }
+
+        public toString(): string
+        {
+            return this.encodePoint(true).toHexString();
         }
 
         public twice(): ECPoint

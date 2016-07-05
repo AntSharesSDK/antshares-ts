@@ -102,6 +102,12 @@
             this.checkState();
         }
 
+        public static resolve<T>(value: T | PromiseLike<T>): PromiseLike<T>
+        {
+            if (value instanceof Promise) return value;
+            return new Promise<T>((resolve, reject) => resolve(value));
+        }
+
         public then<TResult>(onFulfilled?: Func<TResult | PromiseLike<TResult>, T>, onRejected?: Func<TResult | PromiseLike<TResult>, any>): PromiseLike<TResult>
         {
             this._onFulfilled = onFulfilled;
