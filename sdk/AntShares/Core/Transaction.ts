@@ -1,6 +1,6 @@
 namespace AntShares.Core
 {
-    export abstract class Transaction extends Network.Inventory implements ISignable
+    export abstract class Transaction extends Network.Inventory
     {
         public type: TransactionType;
         public attributes: TransactionAttribute[];
@@ -68,14 +68,6 @@ namespace AntShares.Core
         public getAllInputs(): TransactionInput[]
         {
             return this.inputs;
-        }
-
-        protected getHashData(): ArrayBuffer
-        {
-            let ms = new IO.MemoryStream();
-            let w = new IO.BinaryWriter(ms);
-            this.serializeUnsigned(w);
-            return ms.toArray();
         }
 
         public serialize(writer: IO.BinaryWriter): void

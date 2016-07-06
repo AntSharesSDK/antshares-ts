@@ -1,6 +1,6 @@
 namespace AntShares.Network
 {
-    export abstract class Inventory implements IO.ISerializable
+    export abstract class Inventory implements Core.ISignable
     {
         public hash: Uint256;
 
@@ -18,8 +18,18 @@ namespace AntShares.Network
 
         public abstract deserialize(reader: IO.BinaryReader): void;
 
-        protected abstract getHashData(): ArrayBuffer;
+        public abstract deserializeUnsigned(reader: IO.BinaryReader): void;
+
+        protected getHashData(): ArrayBuffer
+        {
+            let ms = new IO.MemoryStream();
+            let w = new IO.BinaryWriter(ms);
+            this.serializeUnsigned(w);
+            return ms.toArray();
+        }
 
         public abstract serialize(writer: IO.BinaryWriter): void;
+
+        public abstract serializeUnsigned(writer: IO.BinaryWriter): void;
     }
 }

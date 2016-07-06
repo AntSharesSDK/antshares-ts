@@ -96,7 +96,7 @@
 
         public readSerializable(T: Function): ISerializable
         {
-            let obj = <ISerializable>new (<any>T());
+            let obj = <ISerializable>new (<any>T)();
             obj.deserialize(this);
             return obj;
         }
