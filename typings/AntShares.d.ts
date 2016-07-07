@@ -14,6 +14,19 @@ interface Crypto
     webkitSubtle?: SubtleCrypto;
 }
 
+interface Map<TKey, TValue>
+{
+    get(key: TKey): TValue;
+    has(key: TKey): boolean;
+    set(key: TKey, value: TValue): void;
+}
+
+interface MapConstructor
+{
+    new <TKey, TValue>(): Map<TKey, TValue>;
+    prototype: Map<any, any>;
+}
+
 interface PromiseConstructor
 {
     new <T>(executor: (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void): PromiseLike<T>;
@@ -38,6 +51,8 @@ interface Window
 {
     msCrypto?: Crypto;
     Promise: PromiseConstructorLike;
+    Map: MapConstructor;
 }
 
+declare var Map: MapConstructor;
 declare var Promise: PromiseConstructor;
