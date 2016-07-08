@@ -24,6 +24,14 @@
             return new ECPoint(x3, y3, x.curve);
         }
 
+        public compareTo(other: ECPoint): number
+        {
+            if (this === other) return 0;
+            let result = this.x.compareTo(other.x);
+            if (result != 0) return result;
+            return this.y.compareTo(other.y);
+        }
+
         public static decodePoint(encoded: Uint8Array, curve: ECCurve): ECPoint
         {
             let p: ECPoint;
@@ -132,6 +140,15 @@
                 data[33 - xBytes.length + i] = xBytes[xBytes.length - 1 - i];
             data[0] = commpressed ? this.y.value.isEven() ? 0x02 : 0x03 : 0x04;
             return data;
+        }
+
+        public equals(other: ECPoint): boolean
+        {
+            if (this === other) return true;
+            if (null === other) return false;
+            if (this.isInfinity && other.isInfinity) return true;
+            if (this.isInfinity || other.isInfinity) return false;
+            return this.x.equals(other.x) && this.y.equals(other.y);
         }
 
         public static fromUint8Array(arr: Uint8Array, curve: ECCurve): ECPoint

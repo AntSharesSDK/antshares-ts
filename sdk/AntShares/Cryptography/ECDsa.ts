@@ -37,14 +37,14 @@
                     {
                         k = BigInteger.random(this.key.publicKey.curve.N.bitLength(), window.crypto);
                     }
-                    while (k.sign() == 0 || k.compare(this.key.publicKey.curve.N) >= 0);
+                    while (k.sign() == 0 || k.compareTo(this.key.publicKey.curve.N) >= 0);
                     let p = ECPoint.multiply(this.key.publicKey.curve.G, k);
                     let x = p.x.value;
                     r = x.mod(this.key.publicKey.curve.N);
                 }
                 while (r.sign() == 0);
                 s = k.modInverse(this.key.publicKey.curve.N).multiply(e.add(d.multiply(r))).mod(this.key.publicKey.curve.N);
-                if (s.compare(this.key.publicKey.curve.N.divide(2)) > 0)
+                if (s.compareTo(this.key.publicKey.curve.N.divide(2)) > 0)
                 {
                     s = this.key.publicKey.curve.N.subtract(s);
                 }
@@ -85,7 +85,7 @@
             let arr = Uint8Array.fromArrayBuffer(signature);
             let r = BigInteger.fromUint8Array(arr.subarray(0, 32), 1, false);
             let s = BigInteger.fromUint8Array(arr.subarray(32, 64), 1, false);
-            if (r.compare(this.key.publicKey.curve.N) >= 0 || s.compare(this.key.publicKey.curve.N) >= 0)
+            if (r.compareTo(this.key.publicKey.curve.N) >= 0 || s.compareTo(this.key.publicKey.curve.N) >= 0)
                 return false;
             let e = ECDsa.calculateE(this.key.publicKey.curve.N, message);
             let c = s.modInverse(this.key.publicKey.curve.N);

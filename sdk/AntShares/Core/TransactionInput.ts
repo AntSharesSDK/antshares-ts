@@ -23,5 +23,10 @@ namespace AntShares.Core
             writer.writeUintVariable(this.prevHash);
             writer.writeUint16(this.prevIndex);
         }
+
+        public toString(): string
+        {
+            return this.prevHash.toString() + ':' + this.prevIndex;
+        }
     }
 }

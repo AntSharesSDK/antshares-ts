@@ -16,6 +16,9 @@ interface Crypto
 
 interface Map<TKey, TValue>
 {
+    size: number;
+    delete(key: TKey): boolean;
+    forEach(callback: (value: TValue, key: TKey, map: Map<TKey, TValue>) => void): void;
     get(key: TKey): TValue;
     has(key: TKey): boolean;
     set(key: TKey, value: TValue): void;

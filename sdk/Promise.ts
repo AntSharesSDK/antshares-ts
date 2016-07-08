@@ -14,6 +14,7 @@
     return class Promise<T> implements PromiseLike<T>
     {
         private _state = PromiseState.pending;
+        private _callback_attached = false;
         private _value: T;
         private _reason: any;
         private _onFulfilled: Func<any | PromiseLike<any>, T>;
@@ -64,23 +65,33 @@
 
         private checkState()
         {
-            if (this._state != PromiseState.pending && (this._onFulfilled != null || this._onRejected != null))
+            if (this._state != PromiseState.pending && this._callback_attached)
             {
-                let value = null;
-                if (this._state == PromiseState.fulfilled && this._onFulfilled != null)
-                    value = this._onFulfilled(this._value);
-                else if (this._state == PromiseState.rejected && this._onRejected != null)
-                    value = this._onRejected(this._reason);
+                let callback = this._state == PromiseState.fulfilled ? this._onFulfilled : this._onRejected;
+                let arg = this._state == PromiseState.fulfilled ? this._value : this._reason;
+                let value, reason;
+                try
+                {
+                    value = callback == null ? this : callback(arg);
+                }
+                catch (ex)
+                {
+                    reason = ex;
+                }
                 if (this._next_promise == null)
                 {
-                    if (value instanceof Promise)
+                    if (reason != null)
+                        return Promise.reject(reason);
+                    else if (value instanceof Promise)
                         return value;
                     else
-                        return new Promise((resolve, reject) => resolve(value));
+                        return Promise.resolve(value);
                 }
                 else
                 {
-                    if (value instanceof Promise)
+                    if (reason != null)
+                        this._next_promise.reject(reason);
+                    else if (value instanceof Promise)
                         value.then(this.resolve.bind(this._next_promise), this.reject.bind(this._next_promise));
                     else
                         this._next_promise.resolve(value);
@@ -93,6 +104,11 @@
             this._state = PromiseState.rejected;
             this._reason = reason;
             this.checkState();
+        }
+
+        public static reject(reason: any): PromiseLike<any>
+        {
+            return new Promise((resolve, reject) => reject(reason));
         }
 
         private resolve(value: T): void
@@ -112,6 +128,7 @@
         {
             this._onFulfilled = onFulfilled;
             this._onRejected = onRejected;
+            this._callback_attached = true;
             if (this._state == PromiseState.pending)
             {
                 this._next_promise = new Promise<TResult>(null);

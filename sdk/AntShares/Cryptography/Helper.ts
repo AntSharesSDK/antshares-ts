@@ -4,6 +4,7 @@ interface String
 {
     base58Decode(): Uint8Array;
     base64UrlDecode(): Uint8Array;
+    toAesKey(): PromiseLike<ArrayBuffer>;
 }
 
 interface Uint8Array
@@ -14,18 +15,30 @@ interface Uint8Array
 
 namespace AntShares.Cryptography
 {
-    String.prototype.base58Decode = function ()
+    String.prototype.base58Decode = function (): Uint8Array
     {
         return Base58.Decode(this);
     }
 
-    String.prototype.base64UrlDecode = function ()
+    String.prototype.base64UrlDecode = function (): Uint8Array
     {
         let str = window.atob(this.replace(/-/g, '+').replace(/_/g, '/'));
         let arr = new Uint8Array(str.length);
         for (let i = 0; i < str.length; i++)
             arr[i] = str.charCodeAt(i);
         return arr;
+    }
+
+    String.prototype.toAesKey = function (): PromiseLike<ArrayBuffer>
+    {
+        let utf8 = unescape(encodeURIComponent(this));
+        let codes = new Uint8Array(utf8.length);
+        for (let i = 0; i < codes.length; i++)
+            codes[i] = utf8.charCodeAt(i);
+        return window.crypto.subtle.digest("SHA-256", codes).then(result =>
+        {
+            return window.crypto.subtle.digest("SHA-256", result);
+        });
     }
 
     Uint8Array.prototype.base58Encode = function ()
@@ -48,7 +61,7 @@ namespace AntShares.Cryptography
     {
         if (window.msCrypto)
         {
-            window.crypto.getRandomValues = array=> window.msCrypto.getRandomValues(array);
+            window.crypto.getRandomValues = array => window.msCrypto.getRandomValues(array);
         }
         else
         {

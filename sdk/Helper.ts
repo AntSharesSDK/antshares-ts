@@ -1,6 +1,13 @@
-﻿interface ArrayConstructor
+﻿interface Array<T>
+{
+    fill(value: T, start?: number, end?: number);
+}
+
+interface ArrayConstructor
 {
     copy<T>(src: ArrayLike<T>, srcOffset: number, dst: ArrayLike<T>, dstOffset: number, count: number): void;
+    from<T>(arr: ArrayLike<T>): Array<T>;
+    repeat<T>(value: T, count: number): Array<T>;
 }
 
 interface String
@@ -22,6 +29,21 @@ Array.copy = function <T>(src: ArrayLike<T>, srcOffset: number, dst: ArrayLike<T
 {
     for (let i = 0; i < count; i++)
         dst[i + dstOffset] = src[i + srcOffset];
+}
+
+Array.from = Array.from || function <T>(arr: ArrayLike<T>): Array<T>
+{
+    let array = new Array<T>(arr.length);
+    for (let i = 0; i < array.length; i++)
+        array[i] = arr[i];
+    return array;
+}
+
+Array.repeat = function <T>(value: T, count: number): Array<T>
+{
+    let array = new Array<T>(count);
+    array.fill(value);
+    return array;
 }
 
 Uint8Array.fromArrayBuffer = function (buffer: ArrayBuffer | ArrayBufferView): Uint8Array
@@ -84,7 +106,7 @@ void function ()
             this[i] = value;
         return this;
     }
-
+    Array.prototype.fill = Array.prototype.fill || fillArray;
     Int8Array.prototype.fill = Int8Array.prototype.fill || fillArray;
     Int16Array.prototype.fill = Int16Array.prototype.fill || fillArray;
     Int32Array.prototype.fill = Int32Array.prototype.fill || fillArray;

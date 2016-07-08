@@ -150,11 +150,6 @@
             return bi_x._sign < 0 ? -c : c;
         }
 
-        public compare(other: number | BigInteger): number
-        {
-            return BigInteger.compare(this, other);
-        }
-
         private static compareAbs(x: BigInteger, y: BigInteger): number
         {
             if (x._bits.length > y._bits.length) return +1;
@@ -165,6 +160,11 @@
                 else if (x._bits[i] < y._bits[i])
                     return -1;
             return 0;
+        }
+
+        public compareTo(other: number | BigInteger): number
+        {
+            return BigInteger.compare(this, other);
         }
 
         private static create(sign: number, bits: number[], clamp = false): BigInteger

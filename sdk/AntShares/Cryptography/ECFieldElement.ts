@@ -13,6 +13,12 @@
             return new ECFieldElement(this.value.add(other.value).mod(this.curve.Q), this.curve);
         }
 
+        public compareTo(other: ECFieldElement): number
+        {
+            if (this === other) return 0;
+            return this.value.compareTo(other.value);
+        }
+
         public divide(other: ECFieldElement): ECFieldElement
         {
             return new ECFieldElement(this.value.multiply(other.value.modInverse(this.curve.Q)).mod(this.curve.Q), this.curve);
@@ -105,7 +111,7 @@
                 {
                     P = BigInteger.random(this.curve.Q.bitLength());
                 }
-                while (P.compare(this.curve.Q) >= 0 || !BigInteger.modPow(P.multiply(P).subtract(fourQ), legendreExponent, this.curve.Q).equals(qMinusOne));
+                while (P.compareTo(this.curve.Q) >= 0 || !BigInteger.modPow(P.multiply(P).subtract(fourQ), legendreExponent, this.curve.Q).equals(qMinusOne));
                 let result = ECFieldElement.fastLucasSequence(this.curve.Q, P, Q, k);
                 U = result[0];
                 V = result[1];
