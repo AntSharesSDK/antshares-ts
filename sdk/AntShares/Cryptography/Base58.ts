@@ -4,7 +4,7 @@
     {
         public static Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
-        public static Decode(input: string): Uint8Array
+        public static decode(input: string): Uint8Array
         {
             let bi = BigInteger.Zero;
             for (let i = input.length - 1; i >= 0; i--)
@@ -26,7 +26,7 @@
             return tmp;
         }
 
-        public static Encode(input: Uint8Array): string
+        public static encode(input: Uint8Array): string
         {
             let value = BigInteger.fromUint8Array(input, 1, false);
             let s = "";

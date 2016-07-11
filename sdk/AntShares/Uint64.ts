@@ -13,6 +13,13 @@ namespace AntShares
             super([low, high]);
         }
 
+        public add(other: Uint64): Uint64
+        {
+            let low = this._bits[0] + other._bits[0];
+            let high = this._bits[1] + other._bits[1] + (low > 0xffffffff ? 1 : 0);
+            return new Uint64(low, high);
+        }
+
         public and(other: number | Uint64): Uint64
         {
             if (typeof other === "number")
@@ -85,6 +92,13 @@ namespace AntShares
                 else
                     bits[i] = this._bits[i + shift_units] >>> shift | this._bits[i + shift_units + 1] << (32 - shift);
             return new Uint64(bits[0], bits[1]);
+        }
+
+        public subtract(other: Uint64): Uint64
+        {
+            let low = this._bits[0] - other._bits[0];
+            let high = this._bits[1] - other._bits[1] - (this._bits[0] < other._bits[0] ? 1 : 0);
+            return new Uint64(low, high);
         }
 
         public toInt32(): number

@@ -32,6 +32,11 @@
         {
             return new Promise<any[]>((resolve, reject) =>
             {
+                if (iterable.length == 0)
+                {
+                    resolve([]);
+                    return;
+                }
                 let results = new Array(iterable.length);
                 let rejected = false;
                 let onFulfilled = function (result)

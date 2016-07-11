@@ -2,6 +2,8 @@
 {
     export abstract class Wallet
     {
+        public balanceChanged = new __event(this);
+
         private path: string;
         private iv: Uint8Array;
         private masterKey: Uint8Array;
@@ -15,9 +17,291 @@
         protected get dbPath() { return this.path; }
         protected get walletHeight() { return this.current_height; }
 
+        public addContract(contract: Contract): PromiseLike<void>
+        {
+            if (!this.accounts.has(contract.publicKeyHash.toString()))
+                throw new RangeError();
+            this.contracts.set(contract.scriptHash.toString(), contract);
+            return Promise.resolve(null);
+        }
+
         protected buildDatabase(): PromiseLike<void>
         {
             return Promise.resolve(void 0);
+        }
+
+        public changePassword(password: string): PromiseLike<void>
+        {
+            return password.toAesKey().then(result =>
+            {
+                return window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: (new Uint8Array(result)).base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["encrypt"]);
+            }).then(result =>
+            {
+                return window.crypto.subtle.encrypt({ name: "AES-CBC", iv: this.iv }, result, this.masterKey);
+            }).then(result =>
+            {
+                this.saveStoredData("MasterKey", result);
+            });
+        }
+
+        public containsAccount(publicKey: Cryptography.ECPoint): PromiseLike<boolean>;
+        public containsAccount(publicKeyHash: Uint160): boolean;
+        public containsAccount(): PromiseLike<boolean> | boolean
+        {
+            if (arguments[0] instanceof Cryptography.ECPoint)
+            {
+                return arguments[0].encodePoint(true).toScriptHash().then(result =>
+                {
+                    return this.containsAccount(result);
+                });
+            }
+            else
+            {
+                return this.accounts.has(arguments[0].toString());
+            }
+        }
+
+        public containsAddress(scriptHash: Uint160): boolean
+        {
+            return this.contracts.has(scriptHash.toString());
+        }
+
+        public createAccount(privateKey?: Uint8Array): PromiseLike<Account>
+        {
+            return Account.create(privateKey).then(result =>
+            {
+                this.accounts.set(result.publicKeyHash.toString(), result);
+                return result;
+            });
+        }
+
+        protected decryptPrivateKey(encryptedPrivateKey: ArrayBuffer): PromiseLike<ArrayBuffer>
+        {
+            if (encryptedPrivateKey == null) throw new RangeError();
+            if (encryptedPrivateKey.byteLength != 112) throw new RangeError();
+            return window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: this.masterKey.base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["decrypt"]).then(result =>
+            {
+                return window.crypto.subtle.decrypt({ name: "AES-CBC", iv: this.iv }, result, <any>encryptedPrivateKey);
+            });
+        }
+
+        public deleteAccount(publicKeyHash: Uint160): PromiseLike<boolean>
+        {
+            let promises = new Array<PromiseLike<boolean>>();
+            this.contracts.forEach(contract =>
+            {
+                if (contract.publicKeyHash.equals(publicKeyHash))
+                    promises.push(this.deleteContract(contract.scriptHash));
+            });
+            return Promise.all(promises).then(() =>
+            {
+                return this.accounts.delete(publicKeyHash.toString());
+            });
+        }
+
+        public deleteContract(scriptHash: Uint160): PromiseLike<boolean>
+        {
+            this.coins.forEach((coin, key) =>
+            {
+                if (coin.scriptHash.equals(scriptHash))
+                    this.coins.remove(key);
+            });
+            this.coins.commit();
+            return Promise.resolve(this.contracts.delete(scriptHash.toString()));
+        }
+
+        protected encryptPrivateKey(decryptedPrivateKey: ArrayBuffer): PromiseLike<ArrayBuffer>
+        {
+            return window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: this.masterKey.base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["encrypt"]).then(result =>
+            {
+                return window.crypto.subtle.encrypt({ name: "AES-CBC", iv: this.iv }, result, <any>decryptedPrivateKey);
+            });
+        }
+
+        public findCoins(): Coin[]
+        {
+            let array = new Array<Coin>();
+            this.coins.forEach(coin =>
+            {
+                if (coin.state == CoinState.Unconfirmed || coin.state == CoinState.Unspent)
+                    array.push(coin);
+            });
+            return array;
+        }
+
+        public findUnspentCoins(asset_id?: Uint256, amount?: Fixed8): Coin[]
+        {
+            let array = new Array<Coin>();
+            this.coins.forEach(coin =>
+            {
+                if (coin.state == CoinState.Unspent)
+                    array.push(coin);
+            });
+            if (arguments.length == 0) return array;
+            return Wallet.findUnspentCoins(array, asset_id, amount);
+        }
+
+        protected static findUnspentCoins(unspents: Coin[], asset_id: Uint256, amount: Fixed8): Coin[]
+        {
+            let array = new Array<Coin>();
+            for (let i = 0; i < unspents.length; i++)
+                if (unspents[i].assetId.equals(asset_id))
+                    array.push(unspents[i]);
+            unspents = array;
+            for (let i = 0; i < unspents.length; i++)
+                if (unspents[i].value.equals(amount))
+                    return [unspents[i]];
+            unspents.sort((a, b) => a.value.compareTo(b.value));
+            for (let i = 0; i < unspents.length; i++)
+                if (unspents[i].value.compareTo(amount) > 0)
+                    return [unspents[i]];
+            let sum = Fixed8.Zero;
+            for (let i = 0; i < unspents.length; i++)
+                sum = sum.add(unspents[i].value);
+            if (sum.compareTo(amount) < 0) return null;
+            if (sum.equals(amount)) return unspents;
+            array = new Array<Coin>();
+            for (let i = unspents.length - 1; i >= 0; i--)
+            {
+                if (amount.equals(Fixed8.Zero)) break;
+                amount = amount.subtract(Fixed8.min(amount, unspents[i].value));
+            }
+            return array;
+        }
+
+        public getAccount(publicKey: Cryptography.ECPoint): PromiseLike<Account>;
+        public getAccount(publicKeyHash: Uint160): Account;
+        public getAccount()
+        {
+            if (arguments[0] instanceof Cryptography.ECPoint)
+            {
+                return arguments[0].encodePoint(true).toScriptHash().then(result =>
+                {
+                    return this.getAccount(result);
+                });
+            }
+            else
+            {
+                let key = arguments[0].toString();
+                if (!this.accounts.has(key)) return null;
+                return this.accounts.get(key);
+            }
+        }
+
+        public getAccountByScriptHash(scriptHash: Uint160): Account
+        {
+            let key = scriptHash.toString();
+            if (!this.contracts.has(key)) return null;
+            return this.accounts.get(this.contracts.get(key).publicKeyHash.toString());
+        }
+
+        public getAccounts(): Account[]
+        {
+            let array = new Array<Account>();
+            this.accounts.forEach(account =>
+            {
+                array.push(account);
+            });
+            return array;
+        }
+
+        public getAddresses(): Uint160[]
+        {
+            let array = new Array<Uint160>();
+            this.contracts.forEach(contract =>
+            {
+                array.push(contract.scriptHash);
+            });
+            return array;
+        }
+
+        public getAvailable(asset_id: Uint256): Fixed8
+        {
+            let sum = Fixed8.Zero;
+            this.coins.forEach(coin =>
+            {
+                if (coin.state == CoinState.Unspent && coin.assetId.equals(asset_id))
+                    sum = sum.add(coin.value);
+            });
+            return sum;
+        }
+
+        public getBalance(asset_id: Uint256): Fixed8
+        {
+            let sum = Fixed8.Zero;
+            this.coins.forEach(coin =>
+            {
+                if ((coin.state == CoinState.Unconfirmed || coin.state == CoinState.Unspent) && coin.assetId.equals(asset_id))
+                    sum = sum.add(coin.value);
+            });
+            return sum;
+        }
+
+        public getChangeAddress(): Uint160
+        {
+            let array = this.getContracts();
+            for (let i = 0; i < array.length; i++)
+                if (array[i].isStandard())
+                    return array[i].scriptHash;
+            return array[0].scriptHash;
+        }
+
+        public getContract(scriptHash: Uint160): Contract
+        {
+            let key = scriptHash.toString();
+            if (!this.contracts.has(key)) return null;
+            return this.contracts.get(key);
+        }
+
+        public getContracts(publicKeyHash?: Uint160): Contract[]
+        {
+            let array = new Array<Contract>();
+            this.contracts.forEach(contract =>
+            {
+                if (publicKeyHash == null || publicKeyHash.equals(contract.publicKeyHash))
+                    array.push(contract);
+            });
+            return array;
+        }
+
+        public static getPrivateKeyFromWIF(wif: string): PromiseLike<ArrayBuffer>
+        {
+            if (wif == null) throw new RangeError();
+            let data = wif.base58Decode();
+            if (data.length != 38 || data[0] != 0x80 || data[33] != 0x01)
+                throw new RangeError();
+            return window.crypto.subtle.digest("SHA-256", new Uint8Array(data.buffer, 0, data.length - 4)).then(result =>
+            {
+                return window.crypto.subtle.digest("SHA-256", result);
+            }).then(result =>
+            {
+                let array = new Uint8Array(result);
+                for (let i = 0; i < 4; i++)
+                    if (data[data.length - 4 + i] != array[i])
+                        throw new RangeError();
+                let privateKey = new Uint8Array(32);
+                Array.copy(data, 1, privateKey, 0, privateKey.length);
+                return privateKey.buffer;
+            });
+        }
+
+        public getUnclaimedCoins(): Coin[]
+        {
+            let array = new Array<Coin>();
+            this.coins.forEach(coin =>
+            {
+                if (coin.state == CoinState.Spent && coin.assetId.equals(Core.Blockchain.AntShare.hash))
+                    array.push(coin);
+            });
+            return array;
+        }
+
+        public import(wif: string): PromiseLike<Account>
+        {
+            return Wallet.getPrivateKeyFromWIF(wif).then(result =>
+            {
+                return this.createAccount(new Uint8Array(result));
+            });
         }
 
         protected init(path: string, password: string | ArrayBuffer, create: boolean): PromiseLike<void>
@@ -110,7 +394,77 @@
 
         protected abstract loadStoredData(name: string): PromiseLike<ArrayBuffer>;
 
+        public makeTransaction<T extends Core.Transaction>(tx: T, fee: Fixed8): T
+        {
+            if (tx.outputs == null) throw new RangeError();
+            if (tx.attributes == null) tx.attributes = new Array<Core.TransactionAttribute>();
+            fee = fee.add(tx.systemFee);
+            let outputs = tx instanceof Core.IssueTransaction ? new Array<Core.TransactionOutput>() : tx.outputs;
+            let pay_total = new Map<string, { assetId: Uint256, value: Fixed8 }>();
+            for (let i = 0; i < outputs.length; i++)
+            {
+                let key = outputs[i].assetId.toString();
+                if (pay_total.has(key))
+                {
+                    let item = pay_total.get(key);
+                    item.value = item.value.add(outputs[i].value);
+                }
+                else
+                {
+                    pay_total.set(key, { assetId: outputs[i].assetId, value: outputs[i].value });
+                }
+            }
+            if (fee.compareTo(Fixed8.Zero) > 0)
+            {
+                let key = Core.Blockchain.AntCoin.hash.toString();
+                if (pay_total.has(key))
+                {
+                    let item = pay_total.get(key);
+                    item.value = item.value.add(fee);
+                }
+                else
+                {
+                    pay_total.set(key, { assetId: Core.Blockchain.AntCoin.hash, value: fee });
+                }
+            }
+            let pay_coins = new Array<Core.TransactionInput>(), input_sum = new Array<{ assetId: Uint256, value: Fixed8 }>(), insufficient = false;
+            pay_total.forEach(item =>
+            {
+                let unspents = this.findUnspentCoins(item.assetId, item.value);
+                if (unspents == null)
+                {
+                    insufficient = true;
+                    return;
+                }
+                let sum = Fixed8.Zero;
+                for (let i = 0; i < unspents.length; i++)
+                {
+                    sum = sum.add(unspents[i].value);
+                    pay_coins.push(unspents[i].input);
+                }
+                input_sum.push({ assetId: item.assetId, value: sum });
+            });
+            if (insufficient) return null;
+            let change_address = this.getChangeAddress();
+            for (let i = 0; i < input_sum.length; i++)
+            {
+                let key = input_sum[i].assetId.toString();
+                if (input_sum[i].value.compareTo(pay_total.get(key).value) > 0)
+                {
+                    let output = new Core.TransactionOutput();
+                    output.assetId = input_sum[i].assetId;
+                    output.value = input_sum[i].value.subtract(pay_total.get(key).value);
+                    output.scriptHash = change_address;
+                    tx.outputs.push(output);
+                }
+            }
+            tx.inputs = pay_coins;
+            return tx;
+        }
+
         protected abstract onProcessNewBlock(block: Core.Block, transactions: Core.Transaction[], added: Coin[], changed: Coin[], deleted: Coin[]): PromiseLike<void>;
+
+        protected abstract onSendTransaction(tx: Core.Transaction, added: Coin[], changed: Coin[]): PromiseLike<void>;
 
         private processBlocks(): void
         {
@@ -207,32 +561,83 @@
                 }
                 this.current_height++;
                 let changeset = this.coins.getChangeSet();
-                if (changeset.length > 0)
+                if (changeset.length == 0) return;
+                let transactions = new Array<Core.Transaction>();
+                map.forEach(tx => transactions.push(tx));
+                let added = new Array<Coin>(), changed = new Array<Coin>(), deleted = new Array<Coin>();
+                for (let i = 0; i < changeset.length; i++)
                 {
-                    let transactions = new Array<Core.Transaction>();
-                    map.forEach(tx => transactions.push(tx));
-                    let added = new Array<Coin>();
-                    let changed = new Array<Coin>();
-                    let deleted = new Array<Coin>();
-                    for (let i = 0; i < changeset.length; i++)
-                    {
-                        if (changeset[i].trackState == IO.Caching.TrackState.Added)
-                            added.push(changeset[i]);
-                        else if (changeset[i].trackState == IO.Caching.TrackState.Changed)
-                            changed.push(changeset[i]);
-                        else if (changeset[i].trackState == IO.Caching.TrackState.Deleted)
-                            deleted.push(changeset[i]);
-                    }
-                    return this.onProcessNewBlock(block, transactions, added, changed, deleted).then(() =>
-                    {
-                        this.coins.commit();
-                        //TODO: dispatchEvent("BalanceChanged")
-                    });
+                    if (changeset[i].trackState == IO.Caching.TrackState.Added)
+                        added.push(changeset[i]);
+                    else if (changeset[i].trackState == IO.Caching.TrackState.Changed)
+                        changed.push(changeset[i]);
+                    else if (changeset[i].trackState == IO.Caching.TrackState.Deleted)
+                        deleted.push(changeset[i]);
                 }
+                return this.onProcessNewBlock(block, transactions, added, changed, deleted).then(() =>
+                {
+                    this.coins.commit();
+                    this.balanceChanged.dispatchEvent(null);
+                });
             });
         }
 
+        public rebuild(): PromiseLike<void>
+        {
+            this.coins.clear();
+            this.coins.commit();
+            this.current_height = 0;
+            return Promise.resolve(null);
+        }
+
         protected abstract saveStoredData(name: string, value: ArrayBuffer): PromiseLike<void>;
+
+        public sendTransaction(tx: Core.Transaction): PromiseLike<boolean>
+        {
+            let inputs = tx.getAllInputs();
+            for (let i = 0; i < inputs.length; i++)
+            {
+                let key = inputs[i].toString();
+                if (!this.coins.has(key) || this.coins.get(key).state != CoinState.Unspent)
+                    return Promise.resolve(false);
+            }
+            return tx.ensureHash().then(() =>
+            {
+                for (let i = 0; i < inputs.length; i++)
+                    this.coins.get(inputs[i].toString()).state = CoinState.Spending;
+                for (let i = 0; i < tx.outputs.length; i++)
+                {
+                    if (this.contracts.has(tx.outputs[i].scriptHash.toString()))
+                    {
+                        let coin = new Coin();
+                        coin.input = new Core.TransactionInput();
+                        coin.input.prevHash = tx.hash;
+                        coin.input.prevIndex = i;
+                        coin.assetId = tx.outputs[i].assetId;
+                        coin.value = tx.outputs[i].value;
+                        coin.scriptHash = tx.outputs[i].scriptHash;
+                        coin.state = CoinState.Unconfirmed;
+                        this.coins.add(coin);
+                    }
+                }
+                let changeset = this.coins.getChangeSet();
+                if (changeset.length == 0) return true;
+                let added = new Array<Coin>(), changed = new Array<Coin>();
+                for (let i = 0; i < changeset.length; i++)
+                {
+                    if (changeset[i].trackState == IO.Caching.TrackState.Added)
+                        added.push(changeset[i]);
+                    else if (changeset[i].trackState == IO.Caching.TrackState.Changed)
+                        changed.push(changeset[i]);
+                }
+                return this.onSendTransaction(tx, added, changed).then(() =>
+                {
+                    this.coins.commit();
+                    this.balanceChanged.dispatchEvent(null);
+                    return true;
+                });
+            });
+        }
 
         public static toAddress(scriptHash: Uint160): PromiseLike<string>
         {
@@ -246,6 +651,26 @@
             {
                 Array.copy(new Uint8Array(result), 0, data, 21, 4);
                 return data.base58Encode();
+            });
+        }
+
+        public static toScriptHash(address: string): PromiseLike<Uint160>
+        {
+            let data = address.base58Decode();
+            if (data.length != 25) throw new RangeError();
+            if (data[0] != Wallet.CoinVersion) throw new RangeError();
+            return window.crypto.subtle.digest("SHA-256", new Uint8Array(data.buffer, 0, data.length - 4)).then(result =>
+            {
+                return window.crypto.subtle.digest("SHA-256", result);
+            }).then(result =>
+            {
+                let array = new Uint8Array(result);
+                for (let i = 0; i < 4; i++)
+                    if (array[i] != data[data.length - 4 + i])
+                        throw new RangeError();
+                array = new Uint8Array(20);
+                Array.copy(data, 1, array, 0, 20);
+                return new Uint160(array.buffer);
             });
         }
     }

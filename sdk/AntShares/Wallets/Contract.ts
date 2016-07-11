@@ -79,6 +79,15 @@ namespace AntShares.Wallets
             return Wallet.toAddress(this.scriptHash);
         }
 
+        public isStandard(): boolean
+        {
+            if (this.redeemScript.byteLength != 35) return false;
+            let array = new Uint8Array(this.redeemScript);
+            if (array[0] != 33 || array[34] != Core.Scripts.ScriptOp.OP_CHECKSIG)
+                return false;
+            return true;
+        }
+
         public serialize(writer: IO.BinaryWriter): void
         {
             writer.writeUintVariable(this.scriptHash);

@@ -22,6 +22,17 @@ namespace AntShares.IO.Caching
             item.trackState = TrackState.Added;
         }
 
+        public clear(): void
+        {
+            this._map.forEach((value, key, map) =>
+            {
+                if (value.trackState == TrackState.Added)
+                    map.delete(key);
+                else
+                    value.trackState = TrackState.Deleted;
+            });
+        }
+
         public commit(): void
         {
             this._map.forEach((value, key, map) =>
@@ -33,6 +44,14 @@ namespace AntShares.IO.Caching
             });
         }
 
+        public forEach(callback: (value: TItem, key: TKey, collection: TrackableCollection<TKey, TItem>) => void): void
+        {
+            this._map.forEach((value, key) =>
+            {
+                callback(value, key, this);
+            });
+        }
+
         public get(key: TKey): TItem
         {
             return this._map.get(key);
@@ -41,7 +60,7 @@ namespace AntShares.IO.Caching
         public getChangeSet(): TItem[]
         {
             let array = new Array<TItem>();
-            this._map.forEach((value, key, map) =>
+            this._map.forEach(value =>
             {
                 if (value.trackState != TrackState.None)
                     array.push(value);

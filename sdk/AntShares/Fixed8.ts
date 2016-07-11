@@ -18,6 +18,14 @@ namespace AntShares
                 throw new RangeError();
         }
 
+        public add(other: Fixed8): Fixed8
+        {
+            let result = this.data.add(other.data);
+            if (result.compareTo(this.data) < 0)
+                throw new Error();
+            return new Fixed8(result);
+        }
+
         public compareTo(other: Fixed8): number
         {
             return this.data.compareTo(other.data);
@@ -70,6 +78,13 @@ namespace AntShares
                 for (let i = digits; i < 8; i++)
                     str += '0';
             return new Fixed8(Uint64.parse(str));
+        }
+
+        public subtract(other: Fixed8): Fixed8
+        {
+            if (this.data.compareTo(other.data) < 0)
+                throw new Error();
+            return new Fixed8(this.data.subtract(other.data));
         }
 
         public toString(): string

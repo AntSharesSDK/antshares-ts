@@ -17,7 +17,7 @@ namespace AntShares.Cryptography
 {
     String.prototype.base58Decode = function (): Uint8Array
     {
-        return Base58.Decode(this);
+        return Base58.decode(this);
     }
 
     String.prototype.base64UrlDecode = function (): Uint8Array
@@ -43,7 +43,7 @@ namespace AntShares.Cryptography
 
     Uint8Array.prototype.base58Encode = function ()
     {
-        return Base58.Encode(this);
+        return Base58.encode(this);
     }
 
     Uint8Array.prototype.base64UrlEncode = function ()

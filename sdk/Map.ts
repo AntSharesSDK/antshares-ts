@@ -5,6 +5,13 @@ if (window.Map == null) window.Map = class <TKey, TValue>
 
     public get size() { return this._size; }
 
+    public clear(): void
+    {
+        for (let key in this._map)
+            delete this._map[key];
+        this._size = 0;
+    }
+
     public delete(key: TKey): boolean
     {
         if (!this._map.hasOwnProperty(<any>key))
