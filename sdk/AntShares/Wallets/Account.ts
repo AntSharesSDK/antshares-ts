@@ -6,22 +6,23 @@ namespace AntShares.Wallets
         public publicKey: Cryptography.ECPoint;
         public publicKeyHash: Uint160;
 
-        public static create(privateKey?: Uint8Array): PromiseLike<Account>
+        public static create(privateKey?: ArrayBuffer | Uint8Array): PromiseLike<Account>
         {
             if (privateKey == null)
             {
                 privateKey = new Uint8Array(32);
-                window.crypto.getRandomValues(privateKey);
+                window.crypto.getRandomValues(<Uint8Array>privateKey);
             }
-            if (privateKey.length != 32 && privateKey.length != 96 && privateKey.length != 104)
+            if (privateKey.byteLength != 32 && privateKey.byteLength != 96 && privateKey.byteLength != 104)
                 throw new RangeError();
+            privateKey = Uint8Array.fromArrayBuffer(privateKey);
             let account = new Account();
             account.privateKey = new ArrayBuffer(32);
-            Array.copy(privateKey, privateKey.length - 32, new Uint8Array(account.privateKey), 0, 32);
-            if (privateKey.length == 32)
-                account.publicKey = Cryptography.ECPoint.multiply(Cryptography.ECCurve.secp256r1.G, privateKey);
+            Array.copy(<Uint8Array>privateKey, privateKey.byteLength - 32, new Uint8Array(account.privateKey), 0, 32);
+            if (privateKey.byteLength == 32)
+                account.publicKey = Cryptography.ECPoint.multiply(Cryptography.ECCurve.secp256r1.G, <Uint8Array>privateKey);
             else
-                account.publicKey = Cryptography.ECPoint.fromUint8Array(privateKey, Cryptography.ECCurve.secp256r1);
+                account.publicKey = Cryptography.ECPoint.fromUint8Array(<Uint8Array>privateKey, Cryptography.ECCurve.secp256r1);
             return account.publicKey.encodePoint(true).toScriptHash().then(result =>
             {
                 account.publicKeyHash = result;

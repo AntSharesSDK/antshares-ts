@@ -66,7 +66,7 @@
             return this.contracts.has(scriptHash.toString());
         }
 
-        public createAccount(privateKey?: Uint8Array): PromiseLike<Account>
+        public createAccount(privateKey?: ArrayBuffer | Uint8Array): PromiseLike<Account>
         {
             return Account.create(privateKey).then(result =>
             {
