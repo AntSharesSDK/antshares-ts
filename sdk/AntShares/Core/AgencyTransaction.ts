@@ -45,6 +45,11 @@ namespace AntShares.Core
             return array;
         }
 
+        public getScriptHashesForVerifying(): PromiseLike<Uint160[]>
+        {
+            throw new Error("NotSupported");
+        }
+
         protected serializeExclusiveData(writer: IO.BinaryWriter): void
         {
             writer.writeUintVariable(this.assetId);

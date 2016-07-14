@@ -70,6 +70,59 @@ namespace AntShares.Core
             return this.inputs;
         }
 
+        protected getReferences(): PromiseLike<Map<string, TransactionOutput>>
+        {
+            let inputs = this.getAllInputs();
+            let promises = new Array<PromiseLike<Transaction>>();
+            for (let i = 0; i < inputs.length; i++)
+                promises.push(Blockchain.Default.getTransaction(inputs[i].prevHash));
+            return Promise.all(promises).then(results =>
+            {
+                let dictionary = new Map<string, TransactionOutput>();
+                for (let i = 0; i < inputs.length; i++)
+                {
+                    if (results[i] == null) return null;
+                    dictionary.set(inputs[i].toString(), results[i].outputs[inputs[i].prevIndex]);
+                }
+                return dictionary;
+            });
+        }
+
+        public getScriptHashesForVerifying(): PromiseLike<Uint160[]>
+        {
+            let hashes = new Map<string, Uint160>();
+            return this.getReferences().then(result =>
+            {
+                if (result == null) throw new Error();
+                for (let i = 0; i < this.inputs.length; i++)
+                {
+                    let hash = result.get(this.inputs[i].toString()).scriptHash;
+                    hashes.set(hash.toString(), hash);
+                }
+                let promises = new Array<PromiseLike<Transaction>>();
+                for (let i = 0; i < this.outputs.length; i++)
+                    promises.push(Blockchain.Default.getTransaction(this.outputs[i].assetId));
+                return Promise.all(promises);
+            }).then(results =>
+            {
+                for (let i = 0; i < this.outputs.length; i++)
+                {
+                    let tx = <RegisterTransaction>results[i];
+                    if (tx == null) throw new Error();
+                    if (tx.assetType == AssetType.Share)
+                    {
+                        hashes.set(this.outputs[i].scriptHash.toString(), this.outputs[i].scriptHash);
+                    }
+                }
+                let array = new Array<Uint160>();
+                hashes.forEach(hash =>
+                {
+                    array.push(hash);
+                });
+                return array.sort((a, b) => a.compareTo(b));
+            });
+        }
+
         public serialize(writer: IO.BinaryWriter): void
         {
             this.serializeUnsigned(writer);

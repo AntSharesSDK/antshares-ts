@@ -42,6 +42,11 @@ namespace AntShares.Core
             this.inputs = <TransactionInput[]>reader.readSerializableArray(TransactionInput);
         }
 
+        public getScriptHashesForVerifying(): PromiseLike<Uint160[]>
+        {
+            throw new Error("NotSupported");
+        }
+
         public serialize(writer: IO.BinaryWriter): void
         {
             this.serializeUnsigned(writer);

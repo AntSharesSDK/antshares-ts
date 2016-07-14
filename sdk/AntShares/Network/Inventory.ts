@@ -28,6 +28,8 @@ namespace AntShares.Network
             return ms.toArray();
         }
 
+        public abstract getScriptHashesForVerifying(): PromiseLike<Uint160[]>;
+
         public abstract serialize(writer: IO.BinaryWriter): void;
 
         public abstract serializeUnsigned(writer: IO.BinaryWriter): void;

@@ -56,6 +56,20 @@ namespace AntShares.Core
             this.transactions = [];
         }
 
+        public getScriptHashesForVerifying(): PromiseLike<Uint160[]>
+        {
+            if (this.prevBlock.equals(Uint256.Zero))
+                return new ArrayBuffer(0).toScriptHash().then(result =>
+                {
+                    return [result];
+                });
+            return Blockchain.Default.getBlock(this.prevBlock).then(result =>
+            {
+                if (result == null) throw new Error();
+                return [result.nextMiner];
+            });
+        }
+
         public serialize(writer: IO.BinaryWriter): void
         {
             this.serializeUnsigned(writer);

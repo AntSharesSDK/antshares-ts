@@ -24,6 +24,27 @@ namespace AntShares.Core
             this.admin = reader.readUint160();
         }
 
+        public getScriptHashesForVerifying(): PromiseLike<Uint160[]>
+        {
+            let hashes = new Map<string, Uint160>();
+            return super.getScriptHashesForVerifying().then(result =>
+            {
+                for (let i = 0; i < result.length; i++)
+                    hashes.set(result[i].toString(), result[i]);
+                return Wallets.Contract.createSignatureRedeemScript(this.issuer).toScriptHash();
+            }).then(result =>
+            {
+                hashes.set(result.toString(), result);
+                hashes.set(this.admin.toString(), this.admin);
+                let array = new Array<Uint160>();
+                hashes.forEach(hash =>
+                {
+                    array.push(hash);
+                });
+                return array.sort((a, b) => a.compareTo(b));
+            });
+        }
+
         protected serializeExclusiveData(writer: IO.BinaryWriter): void
         {
             writer.writeByte(this.assetType);

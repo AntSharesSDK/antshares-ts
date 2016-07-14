@@ -34,7 +34,7 @@ interface MapConstructor
 interface PromiseConstructor
 {
     new <T>(executor: (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void): PromiseLike<T>;
-    all(iterable: PromiseLike<any>[]): PromiseLike<any[]>;
+    all<T>(iterable: PromiseLike<T>[]): PromiseLike<T[]>;
     resolve<T>(value: T | PromiseLike<T>): PromiseLike<T>;
     prototype: PromiseLike<any>;
 }
