@@ -6,9 +6,10 @@ namespace AntShares.Core
 
         public get systemFee()
         {
-            for (let i = 0; i < this.outputs.length; i++)
-                if (!this.outputs[i].assetId.equals(Blockchain.AntShare.hash) && !this.outputs[i].assetId.equals(Blockchain.AntCoin.hash))
-                    return Fixed8.fromNumber(500);
+            if (!TESTNET)
+                for (let i = 0; i < this.outputs.length; i++)
+                    if (!this.outputs[i].assetId.equals(Blockchain.AntShare.hash) && !this.outputs[i].assetId.equals(Blockchain.AntCoin.hash))
+                        return Fixed8.fromNumber(500);
             return Fixed8.Zero;
         }
 

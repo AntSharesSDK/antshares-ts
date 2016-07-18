@@ -59,7 +59,7 @@ namespace AntShares.Core
         public getScriptHashesForVerifying(): PromiseLike<Uint160[]>
         {
             if (this.prevBlock.equals(Uint256.Zero))
-                return new ArrayBuffer(0).toScriptHash().then(result =>
+                return this.script.redeemScript.toScriptHash().then(result =>
                 {
                     return [result];
                 });

@@ -8,7 +8,11 @@ namespace AntShares.Core
         public issuer: Cryptography.ECPoint;
         public admin: Uint160;
 
-        public get systemFee() { return this.assetType == AssetType.AntShare || this.assetType == AssetType.AntCoin ? Fixed8.Zero : Fixed8.fromNumber(10000); }
+        public get systemFee()
+        {
+            return this.assetType == AssetType.AntShare || this.assetType == AssetType.AntCoin ? Fixed8.Zero :
+                TESTNET ? Fixed8.fromNumber(100) : Fixed8.fromNumber(10000);
+        }
 
         constructor()
         {

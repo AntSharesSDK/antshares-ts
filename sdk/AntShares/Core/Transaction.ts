@@ -109,7 +109,7 @@ namespace AntShares.Core
                 {
                     let tx = <RegisterTransaction>results[i];
                     if (tx == null) throw new Error();
-                    if (tx.assetType == AssetType.Share)
+                    if (tx.assetType & AssetType.DutyFlag)
                     {
                         hashes.set(this.outputs[i].scriptHash.toString(), this.outputs[i].scriptHash);
                     }
