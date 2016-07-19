@@ -36,6 +36,7 @@ interface PromiseConstructor
     new <T>(executor: (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void): PromiseLike<T>;
     all<T>(iterable: PromiseLike<T>[]): PromiseLike<T[]>;
     resolve<T>(value: T | PromiseLike<T>): PromiseLike<T>;
+    resolve(): PromiseLike<void>;
     prototype: PromiseLike<any>;
 }
 
@@ -56,6 +57,8 @@ interface Window
     msCrypto?: Crypto;
     Promise: PromiseConstructorLike;
     Map: MapConstructor;
+    mozIndexedDB: IDBFactory;
+    webkitIndexedDB: IDBFactory;
 }
 
 declare var Map: MapConstructor;
