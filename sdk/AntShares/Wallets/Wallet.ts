@@ -639,6 +639,49 @@
             });
         }
 
+        public sign(context: Core.SignatureContext): PromiseLike<boolean>
+        {
+            let promises = new Array<PromiseLike<{ contract: Contract, account: Account, signature: ArrayBuffer }>>();
+            for (let i = 0; i < context.scriptHashes.length; i++)
+            {
+                let contract = this.getContract(context.scriptHashes[i]);
+                if (contract == null) continue;
+                let account = this.getAccountByScriptHash(context.scriptHashes[i]);
+                if (account == null) continue;
+                promises.push(this.signInternal(context.signable, account).then(result =>
+                {
+                    return { contract: contract, account: account, signature: result };
+                }));
+            }
+            return Promise.all(promises).then(results =>
+            {
+                let fSuccess = false;
+                for (let i = 0; i < results.length; i++)
+                {
+                    fSuccess = fSuccess || context.add(results[i].contract, results[i].account.publicKey, results[i].signature);
+                }
+                return fSuccess;
+            });
+        }
+
+        private signInternal(signable: Core.ISignable, account: Account): PromiseLike<ArrayBuffer>
+        {
+            let pubkey = account.publicKey.encodePoint(false);
+            let d = new Uint8Array(account.privateKey).base64UrlEncode();
+            let x = pubkey.subarray(1, 33).base64UrlEncode();
+            let y = pubkey.subarray(33, 65).base64UrlEncode();
+            let ms = new IO.MemoryStream();
+            let writer = new IO.BinaryWriter(ms);
+            signable.serializeUnsigned(writer);
+            return Promise.all<any>([
+                window.crypto.subtle.importKey("jwk", <any>{ kty: "EC", crv: "P-256", d: d, x: x, y: y, ext: true }, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]),
+                window.crypto.subtle.digest("SHA-256", ms.toArray())
+            ]).then(results =>
+            {
+                return window.crypto.subtle.sign({ name: "ECDSA", hash: { name: "SHA-256" } }, results[0], results[1]);
+            });
+        }
+
         public static toAddress(scriptHash: Uint160): PromiseLike<string>
         {
             let data = new Uint8Array(25);
