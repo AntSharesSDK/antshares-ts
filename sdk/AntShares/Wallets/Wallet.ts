@@ -75,13 +75,16 @@
             });
         }
 
-        protected decryptPrivateKey(encryptedPrivateKey: ArrayBuffer): PromiseLike<ArrayBuffer>
+        protected decryptPrivateKey(encryptedPrivateKey: Uint8Array): PromiseLike<Uint8Array>
         {
             if (encryptedPrivateKey == null) throw new RangeError();
             if (encryptedPrivateKey.byteLength != 112) throw new RangeError();
             return window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: this.masterKey.base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["decrypt"]).then(result =>
             {
-                return window.crypto.subtle.decrypt({ name: "AES-CBC", iv: this.iv }, result, <any>encryptedPrivateKey);
+                return window.crypto.subtle.decrypt({ name: "AES-CBC", iv: this.iv }, result, encryptedPrivateKey);
+            }).then(result =>
+            {
+                return new Uint8Array(result);
             });
         }
 
@@ -110,11 +113,14 @@
             return Promise.resolve(this.contracts.delete(scriptHash.toString()));
         }
 
-        protected encryptPrivateKey(decryptedPrivateKey: ArrayBuffer): PromiseLike<ArrayBuffer>
+        protected encryptPrivateKey(decryptedPrivateKey: Uint8Array): PromiseLike<Uint8Array>
         {
             return window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: this.masterKey.base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["encrypt"]).then(result =>
             {
-                return window.crypto.subtle.encrypt({ name: "AES-CBC", iv: this.iv }, result, <any>decryptedPrivateKey);
+                return window.crypto.subtle.encrypt({ name: "AES-CBC", iv: this.iv }, result, decryptedPrivateKey);
+            }).then(result =>
+            {
+                return new Uint8Array(result);
             });
         }
 

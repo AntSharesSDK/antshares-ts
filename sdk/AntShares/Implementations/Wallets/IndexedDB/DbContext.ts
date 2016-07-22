@@ -6,7 +6,9 @@
 
         constructor(private name: string) { }
 
-        private ensureDbOpened(): PromiseLike<void>
+        protected onModelCreating(db: IDBDatabase): void { }
+
+        public open(): PromiseLike<void>
         {
             if (this.db != null) return Promise.resolve();
             let indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
@@ -29,11 +31,9 @@
             });
         }
 
-        protected onModelCreating(db: IDBDatabase): void { }
-
-        public test(): PromiseLike<void>
+        public transaction(storeNames: string | string[], mode = "readonly"): DbTransaction
         {
-            return this.ensureDbOpened();
+            return new DbTransaction(this.db.transaction(storeNames, mode));
         }
     }
 }
