@@ -77,7 +77,7 @@
                 let value, reason;
                 try
                 {
-                    value = callback == null ? this : callback(arg);
+                    value = callback == null ? this : callback.call(this, arg);
                 }
                 catch (ex)
                 {

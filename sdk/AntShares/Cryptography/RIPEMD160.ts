@@ -188,7 +188,7 @@
             }
 
             let digestbytes = RIPEMD160.wordsToBytes(H);
-            return new Uint8Array(digestbytes);
+            return new Uint8Array(digestbytes).buffer;
         }
     }
 }
