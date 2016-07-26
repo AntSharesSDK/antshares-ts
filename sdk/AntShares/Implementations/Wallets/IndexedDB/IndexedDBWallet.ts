@@ -14,7 +14,7 @@ namespace AntShares.Implementations.Wallets.IndexedDB
         {
             return super.addContract(contract).then(() =>
             {
-                return IndexedDBWallet.requestToPromise(this.db.transaction("Contract", "readwrite").store("Contract").put({
+                return DbContext.promise(this.db.transaction("Contract", "readwrite").store("Contract").put({
                     redeemScript: new Uint8Array(contract.redeemScript).toHexString(),
                     parameterList: contract.parameterList,
                     publicKeyHash: contract.publicKeyHash.toString(),
@@ -54,20 +54,31 @@ namespace AntShares.Implementations.Wallets.IndexedDB
             });
         }
 
+        public static delete(name: string): PromiseLike<void>
+        {
+            return DbContext.delete(name);
+        }
+
         public deleteAccount(publicKeyHash: Uint160): PromiseLike<boolean>
         {
             let transaction = this.db.transaction(["Account", "Contract", "Coin"], "readwrite");
             transaction.store("Contract").index("publicKeyHash").openCursor(IDBKeyRange.only(publicKeyHash.toString())).onsuccess = e =>
             {
                 let cursor = <IDBCursorWithValue>(<IDBRequest>e.target).result;
-                transaction.store("Coin").index("scriptHash").openCursor(IDBKeyRange.only(cursor.value.scriptHash)).onsuccess = e =>
+                if (cursor)
                 {
-                    let cursor = <IDBCursor>(<IDBRequest>e.target).result;
+                    transaction.store("Coin").index("scriptHash").openCursor(IDBKeyRange.only(cursor.value.scriptHash)).onsuccess = e =>
+                    {
+                        let cursor = <IDBCursor>(<IDBRequest>e.target).result;
+                        if (cursor)
+                        {
+                            cursor.delete();
+                            cursor.continue();
+                        }
+                    };
                     cursor.delete();
                     cursor.continue();
-                };
-                cursor.delete();
-                cursor.continue();
+                }
             };
             transaction.store("Account").delete(publicKeyHash.toString());
             return transaction.commit().then(() =>
@@ -85,8 +96,11 @@ namespace AntShares.Implementations.Wallets.IndexedDB
                 transaction.store("Coin").index("scriptHash").openCursor(IDBKeyRange.only(scriptHash.toString())).onsuccess = e =>
                 {
                     let cursor = <IDBCursor>(<IDBRequest>e.target).result;
-                    cursor.delete();
-                    cursor.continue();
+                    if (cursor)
+                    {
+                        cursor.delete();
+                        cursor.continue();
+                    }
                 };
                 transaction.store("Contract").delete(scriptHash.toString());
                 return transaction.commit().then(() => true);
@@ -100,11 +114,14 @@ namespace AntShares.Implementations.Wallets.IndexedDB
             transaction.store("Account").openCursor().onsuccess = e =>
             {
                 let cursor = <IDBCursorWithValue>(<IDBRequest>e.target).result;
-                promises.push(this.decryptPrivateKey(cursor.value.privateKeyEncrypted.hexToBytes()).then(result =>
+                if (cursor)
                 {
-                    return AntShares.Wallets.Account.create(result);
-                }));
-                cursor.continue();
+                    promises.push(this.decryptPrivateKey(cursor.value.privateKeyEncrypted.hexToBytes()).then(result =>
+                    {
+                        return AntShares.Wallets.Account.create(result);
+                    }));
+                    cursor.continue();
+                }
             };
             return transaction.commit().then(() =>
             {
@@ -119,16 +136,19 @@ namespace AntShares.Implementations.Wallets.IndexedDB
             transaction.store("Coin").openCursor().onsuccess = e =>
             {
                 let cursor = <IDBCursorWithValue>(<IDBRequest>e.target).result;
-                let coin = new AntShares.Wallets.Coin();
-                coin.input = new Core.TransactionInput();
-                coin.input.prevHash = Uint256.parse(cursor.value.txid);
-                coin.input.prevIndex = cursor.value.index;
-                coin.assetId = Uint256.parse(cursor.value.assetId);
-                coin.value = Fixed8.parse(cursor.value.value);
-                coin.scriptHash = Uint160.parse(cursor.value.scriptHash);
-                coin.state = cursor.value.state;
-                array.push(coin);
-                cursor.continue();
+                if (cursor)
+                {
+                    let coin = new AntShares.Wallets.Coin();
+                    coin.input = new Core.TransactionInput();
+                    coin.input.prevHash = Uint256.parse(cursor.value.txid);
+                    coin.input.prevIndex = cursor.value.index;
+                    coin.assetId = Uint256.parse(cursor.value.assetId);
+                    coin.value = Fixed8.parse(cursor.value.value);
+                    coin.scriptHash = Uint160.parse(cursor.value.scriptHash);
+                    coin.state = cursor.value.state;
+                    array.push(coin);
+                    cursor.continue();
+                }
             };
             return transaction.commit().then(() =>
             {
@@ -143,13 +163,16 @@ namespace AntShares.Implementations.Wallets.IndexedDB
             transaction.store("Contract").openCursor().onsuccess = e =>
             {
                 let cursor = <IDBCursorWithValue>(<IDBRequest>e.target).result;
-                let contract = new AntShares.Wallets.Contract();
-                contract.redeemScript = cursor.value.redeemScript.hexToBytes().buffer;
-                contract.parameterList = cursor.value.parameterList;
-                contract.publicKeyHash = Uint160.parse(cursor.value.publicKeyHash);
-                contract.scriptHash = Uint160.parse(cursor.value.scriptHash);
-                array.push(contract);
-                cursor.continue();
+                if (cursor)
+                {
+                    let contract = new AntShares.Wallets.Contract();
+                    contract.redeemScript = cursor.value.redeemScript.hexToBytes().buffer;
+                    contract.parameterList = cursor.value.parameterList;
+                    contract.publicKeyHash = Uint160.parse(cursor.value.publicKeyHash);
+                    contract.scriptHash = Uint160.parse(cursor.value.scriptHash);
+                    array.push(contract);
+                    cursor.continue();
+                }
             };
             return transaction.commit().then(() =>
             {
@@ -159,7 +182,7 @@ namespace AntShares.Implementations.Wallets.IndexedDB
 
         protected loadStoredData(name: string): PromiseLike<ArrayBuffer>
         {
-            return IndexedDBWallet.requestToPromise<ArrayBuffer>(this.db.transaction("Key", "readonly").store("Key").get(name));
+            return DbContext.promise<ArrayBuffer>(this.db.transaction("Key", "readonly").store("Key").get(name));
         }
 
         private onCoinsChanged(transaction: DbTransaction, added: AntShares.Wallets.Coin[], changed: AntShares.Wallets.Coin[], deleted: AntShares.Wallets.Coin[]): void
@@ -199,7 +222,7 @@ namespace AntShares.Implementations.Wallets.IndexedDB
             Array.copy(new Uint8Array(account.privateKey), 0, decryptedPrivateKey, 64, 32);
             return this.encryptPrivateKey(decryptedPrivateKey).then(result =>
             {
-                return IndexedDBWallet.requestToPromise(this.db.transaction("Account", "readwrite").store("Account").put({
+                return DbContext.promise(this.db.transaction("Account", "readwrite").store("Account").put({
                     privateKeyEncrypted: result.toHexString(),
                     publicKeyHash: account.publicKeyHash.toString()
                 }));
@@ -212,14 +235,17 @@ namespace AntShares.Implementations.Wallets.IndexedDB
             transaction.store("Transaction").index("height").openCursor(IDBKeyRange.only(null)).onsuccess = e =>
             {
                 let cursor = <IDBCursorWithValue>(<IDBRequest>e.target).result;
-                for (let i = 0; i < block.transactions.length; i++)
-                    if (cursor.value.hash == block.transactions[i].hash.toString())
-                    {
-                        cursor.value.height = block.height;
-                        cursor.update(cursor.value);
-                        break;
-                    }
-                cursor.continue();
+                if (cursor)
+                {
+                    for (let i = 0; i < block.transactions.length; i++)
+                        if (cursor.value.hash == block.transactions[i].hash.toString())
+                        {
+                            cursor.value.height = block.height;
+                            cursor.update(cursor.value);
+                            break;
+                        }
+                    cursor.continue();
+                }
             };
             for (let i = 0; i < transactions.length; i++)
             {
@@ -268,17 +294,6 @@ namespace AntShares.Implementations.Wallets.IndexedDB
                 transaction.store("Transaction").clear();
                 transaction.store("Coin").clear();
                 return transaction.commit();
-            });
-        }
-
-        private static requestToPromise(request: IDBRequest): PromiseLike<void>
-        private static requestToPromise<T>(request: IDBRequest): PromiseLike<T>
-        private static requestToPromise<T>(request: IDBRequest): PromiseLike<T>
-        {
-            return new Promise((resolve, reject) =>
-            {
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
             });
         }
 

@@ -12,9 +12,10 @@
         private coins: IO.Caching.TrackableCollection<string, Coin>;
         private current_height: number;
         private isrunning = true;
+        private isclosed = false;
 
         public static get CoinVersion() { return 0x17; }
-        protected get dbPath() { return this.path; }
+        public get dbPath() { return this.path; }
         protected get walletHeight() { return this.current_height; }
 
         public addContract(contract: Contract): PromiseLike<void>
@@ -30,9 +31,24 @@
             return Promise.resolve(void 0);
         }
 
-        public changePassword(password: string): PromiseLike<void>
+        public changePassword(password_old: string, password_new: string): PromiseLike<boolean>
         {
-            return password.toAesKey().then(result =>
+            return Promise.all([
+                this.loadStoredData("PasswordHash"),
+                password_old.toAesKey().then(result =>
+                {
+                    return window.crypto.subtle.digest("SHA-256", result);
+                })
+            ]).then(results =>
+            {
+                if (results[0].byteLength != results[1].byteLength)
+                    throw new Error();
+                let x = new Uint8Array(results[0]), y = new Uint8Array(results[1]);
+                for (let i = 0; i < x.length; i++)
+                    if (x[i] != y[i])
+                        throw new Error();
+                return password_new.toAesKey();
+            }).then(result =>
             {
                 return window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: (new Uint8Array(result)).base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["encrypt"]);
             }).then(result =>
@@ -40,7 +56,21 @@
                 return window.crypto.subtle.encrypt({ name: "AES-CBC", iv: this.iv }, result, this.masterKey);
             }).then(result =>
             {
-                this.saveStoredData("MasterKey", result);
+                return this.saveStoredData("MasterKey", result);
+            }).then(() => true, () => false);
+        }
+
+        public close(): PromiseLike<void>
+        {
+            this.isrunning = false;
+            return new Promise<void>((resolve, reject) =>
+            {
+                let f = () =>
+                {
+                    if (this.isclosed) resolve();
+                    else setTimeout(f, 1000);
+                };
+                f();
             });
         }
 
@@ -474,7 +504,11 @@
 
         private processBlocks(): void
         {
-            if (!this.isrunning) return;
+            if (!this.isrunning)
+            {
+                this.isclosed = true;
+                return;
+            }
             Promise.resolve(Core.Blockchain.Default == null ? 0 : Core.Blockchain.Default.getBlockCount()).then(result =>
             {
                 let block_height = result;
@@ -492,6 +526,8 @@
             {
                 if (this.isrunning)
                     setTimeout(this.processBlocks.bind(this), result * 1000);
+                else
+                    this.isclosed = true;
             });
         }
 

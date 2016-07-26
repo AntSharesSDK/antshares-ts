@@ -28,6 +28,18 @@ namespace AntShares.Core
             this.admin = reader.readUint160();
         }
 
+        public getName(lang = navigator.language || navigator.browserLanguage): string
+        {
+            let _names = <Object>JSON.parse(this.name);
+            if (_names.hasOwnProperty(lang))
+                return _names[lang];
+            else if (_names.hasOwnProperty("en"))
+                return _names["en"];
+            else
+                for (let lang in _names)
+                    return _names[lang];
+        }
+
         public getScriptHashesForVerifying(): PromiseLike<Uint160[]>
         {
             let hashes = new Map<string, Uint160>();

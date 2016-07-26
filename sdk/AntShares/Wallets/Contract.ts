@@ -20,14 +20,14 @@ namespace AntShares.Wallets
             });
         }
 
-        public static createMultiSigContract(publicKeyHash: Uint160, m: number, ...publicKeys: Cryptography.ECPoint[]): PromiseLike<Contract>
+        public static createMultiSigContract(publicKeyHash: Uint160, m: number, publicKeys: Cryptography.ECPoint[]): PromiseLike<Contract>
         {
-            let redeemScript = Contract.createMultiSigRedeemScript.apply(null, [<any>m].concat(publicKeys));
+            let redeemScript = Contract.createMultiSigRedeemScript(m, publicKeys);
             let parameterList = Array.repeat(ContractParameterType.Signature, m);
             return Contract.create(publicKeyHash, parameterList, redeemScript);
         }
 
-        public static createMultiSigRedeemScript(m: number, ...publicKeys: Cryptography.ECPoint[]): ArrayBuffer
+        public static createMultiSigRedeemScript(m: number, publicKeys: Cryptography.ECPoint[]): ArrayBuffer
         {
             if (!(1 <= m && m <= publicKeys.length && publicKeys.length <= 1024))
                 throw new RangeError();

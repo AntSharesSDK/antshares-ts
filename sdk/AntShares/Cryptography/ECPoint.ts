@@ -99,7 +99,7 @@
 
         public static deserializeFrom(reader: IO.BinaryReader, curve: ECCurve): ECPoint
         {
-            let expectedLength = (curve.Q.bitLength() + 7) / 8;
+            let expectedLength = Math.floor((curve.Q.bitLength() + 7) / 8);
             let array = new Uint8Array(1 + expectedLength * 2);
             array[0] = reader.readByte();
             switch (array[0])
