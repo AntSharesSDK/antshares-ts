@@ -713,15 +713,12 @@
             let d = new Uint8Array(account.privateKey).base64UrlEncode();
             let x = pubkey.subarray(1, 33).base64UrlEncode();
             let y = pubkey.subarray(33, 65).base64UrlEncode();
-            let ms = new IO.MemoryStream();
-            let writer = new IO.BinaryWriter(ms);
-            signable.serializeUnsigned(writer);
-            return Promise.all<any>([
-                window.crypto.subtle.importKey("jwk", <any>{ kty: "EC", crv: "P-256", d: d, x: x, y: y, ext: true }, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]),
-                window.crypto.subtle.digest("SHA-256", ms.toArray())
-            ]).then(results =>
+            return window.crypto.subtle.importKey("jwk", <any>{ kty: "EC", crv: "P-256", d: d, x: x, y: y, ext: true }, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]).then(result =>
             {
-                return window.crypto.subtle.sign({ name: "ECDSA", hash: { name: "SHA-256" } }, results[0], results[1]);
+                let ms = new IO.MemoryStream();
+                let writer = new IO.BinaryWriter(ms);
+                signable.serializeUnsigned(writer);
+                return window.crypto.subtle.sign({ name: "ECDSA", hash: { name: "SHA-256" } }, result, <any>ms.toArray());
             });
         }
 
