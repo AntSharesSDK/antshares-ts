@@ -179,30 +179,20 @@
 
         protected static findUnspentCoins(unspents: Coin[], asset_id: Uint256, amount: Fixed8): Coin[]
         {
-            let array = new Array<Coin>();
-            for (let i = 0; i < unspents.length; i++)
-                if (unspents[i].assetId.equals(asset_id))
-                    array.push(unspents[i]);
-            unspents = array;
-            for (let i = 0; i < unspents.length; i++)
-                if (unspents[i].value.equals(amount))
-                    return [unspents[i]];
-            unspents.sort((a, b) => a.value.compareTo(b.value));
-            for (let i = 0; i < unspents.length; i++)
-                if (unspents[i].value.compareTo(amount) > 0)
-                    return [unspents[i]];
+            let unspents_asset = linq(unspents).where(p => p.assetId.equals(asset_id)).toArray();
             let sum = Fixed8.Zero;
-            for (let i = 0; i < unspents.length; i++)
-                sum = sum.add(unspents[i].value);
+            for (let i = 0; i < unspents_asset.length; i++)
+                sum = sum.add(unspents_asset[i].value);
             if (sum.compareTo(amount) < 0) return null;
-            if (sum.equals(amount)) return unspents;
-            array = new Array<Coin>();
-            for (let i = unspents.length - 1; i >= 0; i--)
-            {
-                if (amount.equals(Fixed8.Zero)) break;
-                amount = amount.subtract(Fixed8.min(amount, unspents[i].value));
-            }
-            return array;
+            if (sum.equals(amount)) return unspents_asset;
+            let unspents_ordered = linq(unspents_asset).orderByDescending(p => p.value).toArray();
+            let i = 0;
+            while (unspents_ordered[i].value.compareTo(amount) <= 0)
+                amount = amount.subtract(unspents_ordered[i++].value);
+            if (amount.equals(Fixed8.Zero))
+                return linq(unspents_ordered).take(i).toArray();
+            else
+                return linq(unspents_ordered).take(i).concat(linq([linq(unspents_ordered).last(p => p.value.compareTo(amount) >= 0)])).toArray();
         }
 
         public getAccount(publicKey: Cryptography.ECPoint): PromiseLike<Account>;
