@@ -50,7 +50,7 @@
                 return password_new.toAesKey();
             }).then(result =>
             {
-                return window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: (new Uint8Array(result)).base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["encrypt"]);
+                return window.crypto.subtle.importKey("raw", <any>result, "AES-CBC", false, ["encrypt"]);
             }).then(result =>
             {
                 return window.crypto.subtle.encrypt({ name: "AES-CBC", iv: this.iv }, result, this.masterKey);
@@ -109,7 +109,7 @@
         {
             if (encryptedPrivateKey == null) throw new RangeError();
             if (encryptedPrivateKey.byteLength != 112) throw new RangeError();
-            return window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: this.masterKey.base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["decrypt"]).then(result =>
+            return window.crypto.subtle.importKey("raw", this.masterKey, "AES-CBC", false, ["decrypt"]).then(result =>
             {
                 return window.crypto.subtle.decrypt({ name: "AES-CBC", iv: this.iv }, result, encryptedPrivateKey);
             }).then(result =>
@@ -145,7 +145,7 @@
 
         protected encryptPrivateKey(decryptedPrivateKey: Uint8Array): PromiseLike<Uint8Array>
         {
-            return window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: this.masterKey.base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["encrypt"]).then(result =>
+            return window.crypto.subtle.importKey("raw", this.masterKey, "AES-CBC", false, ["encrypt"]).then(result =>
             {
                 return window.crypto.subtle.encrypt({ name: "AES-CBC", iv: this.iv }, result, decryptedPrivateKey);
             }).then(result =>
@@ -340,7 +340,7 @@
                 passwordKey = new Uint8Array(result);
                 return Promise.all<any>([
                     window.crypto.subtle.digest("SHA-256", passwordKey),
-                    window.crypto.subtle.importKey("jwk", <any>{ kty: "oct", k: passwordKey.base64UrlEncode(), alg: "A256CBC", ext: true }, "AES-CBC", false, ["encrypt", "decrypt"])
+                    window.crypto.subtle.importKey("raw", passwordKey, "AES-CBC", false, ["encrypt", "decrypt"])
                 ]);
             }).then(results =>
             {
