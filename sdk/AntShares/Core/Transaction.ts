@@ -142,5 +142,10 @@ namespace AntShares.Core
             writer.writeSerializableArray(this.inputs);
             writer.writeSerializableArray(this.outputs);
         }
+
+        public setScripts(scripts: Core.Scripts.Script[]): void
+        {
+            this.scripts = scripts;
+        }
     }
 }

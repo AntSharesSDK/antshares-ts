@@ -5,5 +5,6 @@ namespace AntShares.Core
         deserializeUnsigned(reader: IO.BinaryReader): void;
         getScriptHashesForVerifying(): PromiseLike<Uint160[]>;
         serializeUnsigned(writer: IO.BinaryWriter): void;
+        setScripts(scripts: Scripts.Script[]): void;
     }
 }

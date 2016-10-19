@@ -31,7 +31,15 @@ namespace AntShares.Core
 
         public getName(lang = navigator.language || navigator.browserLanguage): string
         {
-            let _names = <string | Array<{ lang: string, name: string }>>JSON.parse(this.name.replace(/'/g, '"'));
+            let _names: string | Array<{ lang: string, name: string }>;
+            try
+            {
+                _names = <string | Array<{ lang: string, name: string }>>JSON.parse(this.name);
+            }
+            catch (ex)
+            {
+                _names = this.name;
+            }
             if (typeof _names === "string")
             {
                 return _names;
